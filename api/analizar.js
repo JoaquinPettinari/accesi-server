@@ -1,13 +1,11 @@
 import { StatusCodes } from "http-status-codes";
 import { successResponse, errorResponse } from "../utils/pa11y.js";
 import pa11y from "pa11y";
-import edgeChromium from "@sparticuz/chromium";
-import puppeteer from "puppeteer-core";
 
 const defaultIncludes = {
   includeWarnings: true,
   includeNotices: true,
-  timeout: 20000,
+  timeout: 30000,
 };
 
 export const maxDuration = 300;
@@ -18,7 +16,6 @@ export default async (request, response) => {
   }
 
   const url = request?.body?.url;
-  const host = request?.hostname || process.env.VERCEL_URL || "localhost";
   let successResponseData, browser, page;
   try {
     if (!url) {
@@ -27,32 +24,14 @@ export default async (request, response) => {
       });
     }
     console.log("🧑‍🏭 Fetching...");
-    if (host.includes("localhost")) {
-      const pa11yResponse = await pa11y(url, {
-        ...defaultIncludes,
-        chromeLaunchConfig: {
-          headless: "new",
-        },
-      });
-      successResponseData = successResponse(pa11yResponse, url);
-    } else {
-      const executablePath = await edgeChromium.executablePath();
-      browser = await puppeteer.launch({
-        executablePath,
-        args: [...edgeChromium.args, "--disable-extensions"],
-        headless: true,
-      });
-      page = await browser.newPage();
-      await page.goto(url);
+    const pa11yResponse = await pa11y(url, {
+      ...defaultIncludes,
+      chromeLaunchConfig: {
+        headless: "new",
+      },
+    });
+    successResponseData = successResponse(pa11yResponse, url);
 
-      const pa11yResponse = await pa11y(url, {
-        ignoreUrl: true,
-        ...defaultIncludes,
-        browser: browser,
-        page: page,
-      });
-      successResponseData = successResponse(pa11yResponse, url);
-    }
     console.log("✅ Fetch success ");
     response.status(StatusCodes.OK).json(successResponseData);
   } catch (error) {
