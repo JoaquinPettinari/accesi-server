@@ -7,7 +7,7 @@ import puppeteer from "puppeteer-core";
 const defaultIncludes = {
   includeWarnings: true,
   includeNotices: true,
-  timeout: 20000,
+  timeout: 30000,
 };
 
 export const maxDuration = 300;
