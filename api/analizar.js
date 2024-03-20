@@ -1,8 +1,7 @@
 import { StatusCodes } from "http-status-codes";
 import { successResponse, errorResponse } from "../utils/pa11y.js";
 import pa11y from "pa11y";
-import edgeChromium from "@sparticuz/chromium-min";
-import puppeteer from "puppeteer-core";
+import chromium from "chrome-aws-lambda";
 
 const defaultIncludes = {
   includeWarnings: true,
@@ -12,25 +11,22 @@ const defaultIncludes = {
 
 export const maxDuration = 300;
 
-async function getBrowser() {
-  return puppeteer.launch({
-    args: [...edgeChromium.args, "--hide-scrollbars", "--disable-web-security"],
-    defaultViewport: edgeChromium.defaultViewport,
-    executablePath: await edgeChromium.executablePath(
-      `https://github.com/Sparticuz/chromium/releases/download/v116.0.0/chromium-v119.0.2-pack.tar`
-    ),
-    headless: edgeChromium.headless,
-    ignoreHTTPSErrors: true,
-  });
-}
-
 export default async (request, response) => {
+  response.setHeader("Access-Control-Allow-Credentials", true);
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+  );
+  response.setHeader(
+    "Access-Control-Allow-Headers",
+    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
+  );
   if (request.method !== "POST") {
     return response.status(StatusCodes.BAD_REQUEST).send("");
   }
 
   const url = request?.body?.url;
-  const host = request?.hostname || process.env.VERCEL_URL || "localhost";
   let successResponseData, browser, page;
   try {
     if (!url) {
@@ -39,31 +35,26 @@ export default async (request, response) => {
       });
     }
     console.log("🧑‍🏭 Fetching...");
-    if (host.includes("localhost")) {
-      const pa11yResponse = await pa11y(url, {
-        ...defaultIncludes,
-        chromeLaunchConfig: {
-          headless: "new",
-        },
-      });
-      successResponseData = successResponse(pa11yResponse, url);
-    } else {
-      browser = await getBrowser();
-      console.log("🧑‍🏭 Get browser");
-      page = await browser.newPage();
-      console.log("🧑‍🏭 New page");
-      await page.goto(url);
-      console.log("🧑‍🏭 Go to new page");
+    const browser = await chromium.puppeteer.launch({
+      args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: "new",
+      ignoreHTTPSErrors: true,
+    });
+    page = await browser.newPage();
+    console.log("🧑‍🏭 New page");
+    await page.goto(url);
+    console.log("🧑‍🏭 Go to new page");
 
-      const pa11yResponse = await pa11y(url, {
-        ignoreUrl: true,
-        ...defaultIncludes,
-        browser: browser,
-        page: page,
-      });
-      console.log("🧑‍🏭 Success pa11y");
-      successResponseData = successResponse(pa11yResponse, url);
-    }
+    const pa11yResponse = await pa11y(url, {
+      ignoreUrl: true,
+      ...defaultIncludes,
+      browser: browser,
+      page: page,
+    });
+    successResponseData = successResponse(pa11yResponse, url);
+
     console.log("✅ Fetch success ");
     response.status(StatusCodes.OK).json(successResponseData);
   } catch (error) {
