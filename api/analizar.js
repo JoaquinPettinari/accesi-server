@@ -39,6 +39,7 @@ export default async (request, response) => {
       args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath,
+      ignoreDefaultArgs: ["--disable-extensions"],
       headless: "new",
       ignoreHTTPSErrors: true,
     });
