@@ -13,8 +13,10 @@ const defaultIncludes = {
 export const maxDuration = 300;
 
 export default async (request, response) => {
+  console.log(request.headers?.origin);
+  const host = request?.hostname || process.env.VERCEL_URL || "localhost";
   response.setHeader("Access-Control-Allow-Credentials", true);
-  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Access-Control-Allow-Origin", host);
   response.setHeader(
     "Access-Control-Allow-Methods",
     "GET,OPTIONS,PATCH,DELETE,POST,PUT"
@@ -29,7 +31,6 @@ export default async (request, response) => {
 
   const url = request?.body?.url;
   let successResponseData, browser, page, pa11yResponse;
-  const host = request?.hostname || process.env.VERCEL_URL || "localhost";
   try {
     if (!url) {
       response.status(404).json({
